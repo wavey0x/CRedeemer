@@ -40,12 +40,9 @@ contract CRedeemer {
     function shouldRedeem(address _cToken) public returns (bool) {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-        uint balance = underlying.balanceOf(address(cToken));
-        uint allowance = cToken.allowance(gov, address(this));
-        if (allowance == 0){
-            return false;
-        }
-        if(balance >= minAmounts[_cToken] && allowance >= minAmounts[_cToken]){
+        uint liquidity = underlying.balanceOf(address(cToken));
+        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(address(cToken)));
+        if(liquidity >= minAmounts[_cToken] && balance >= minAmounts[_cToken]){
             return true;
         }
         return false;
@@ -55,8 +52,8 @@ contract CRedeemer {
         require(shouldRedeem(_cToken));
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-        uint toTransfer = Math.min(cToken.allowance(gov, address(this)), cToken.balanceOf(gov));
-        uint amount = Math.min(toTransfer, convertFromUnderlying(_cToken, underlying.balanceOf(address(cToken))));
+        uint convertedAmount = convertToUnderlying(_cToken, cToken.balanceOf(address(this)));
+        uint amount = Math.min(convertedAmount, underlying.balanceOf(_cToken));
 
         _redeem(_cToken, amount);
     }
@@ -70,7 +67,6 @@ contract CRedeemer {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
 
-        cToken.transferFrom(gov, address(this), amount);
         cToken.redeem(amount);
         
         uint amountRedeemed = underlying.balanceOf(address(this));
@@ -84,6 +80,15 @@ contract CRedeemer {
             balance = 0;
         } else {
             balance = amountOfUnderlying.mul(1e18).div(cToken.exchangeRateStored());
+        }
+    }
+
+    function convertToUnderlying(address _cToken, uint256 cTokenAmount) public view returns (uint256 balance){
+        ICToken cToken = ICToken(_cToken);
+        if (cTokenAmount == 0) {
+            balance = 0;
+        } else {
+            balance = cTokenAmount.mul(cToken.exchangeRateStored()).div(1e18);
         }
     }
 
