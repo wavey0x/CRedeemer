@@ -18,6 +18,7 @@ interface ICToken {
     function redeem(uint256 redeemTokens) external returns (uint256);
     function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
     function balanceOf(address owner) external view returns (uint256);
+    function exchangeRateCurrent() external returns (uint);
 }
 
 contract CRedeemer {
@@ -51,7 +52,10 @@ contract CRedeemer {
         require(shouldRedeem(_cToken));
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-        uint convertedAmount = convertToUnderlying(_cToken, cToken.balanceOf(address(this)));
+        uint convertedAmount = 
+            cToken.balanceOf(address(this))
+            .mul(cToken.exchangeRateCurrent())
+            .div(1e18);
         uint amount = Math.min(convertedAmount, underlying.balanceOf(_cToken));
 
         _redeem(_cToken, amount);

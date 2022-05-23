@@ -10,20 +10,29 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
     assert scdai.balanceOf(gov) > 0
     scdai.transfer(redeemer, scdai.balanceOf(gov), fromGov)
 
-    repayment_amount = 100e18 + 1
-    beginning_bal = dai.balanceOf(scdai)
-    dai.transfer(scdai, repayment_amount, fromWhale)
+    repayment_amount = 100e18
+    chain.snapshot()
+    # Test for rounding errors
+    for i in range(0,15):
+        repayment_amount += 1
+        repayment_amount += 1e8
+        repayment_amount += 1_000e18
+        beginning_bal = dai.balanceOf(scdai)
+        dai.transfer(scdai, repayment_amount, fromWhale)
 
-    before = dai.balanceOf(scdai)
-    gov_before = dai.balanceOf(gov)
-    tx = redeemer.redeemMax(scdai, fromWhale)
-    after = dai.balanceOf(scdai)
-    retrieved = tx.events["Retrieved"]["amount"]
-    gov_gain = dai.balanceOf(gov) - gov_before
-    
-    assert before > after
-    assert pytest.approx(retrieved, rel=RELATIVE_APPROX) == repayment_amount + beginning_bal
-    assert retrieved == gov_gain
+        before = dai.balanceOf(scdai)
+        gov_before = dai.balanceOf(gov)
+        tx = redeemer.redeemMax(scdai, fromWhale)
+        after = dai.balanceOf(scdai)
+        retrieved = tx.events["Retrieved"]["amount"]
+        print("Amount redeemed:", retrieved)
+        gov_gain = dai.balanceOf(gov) - gov_before
+        
+        assert before > after
+        assert pytest.approx(retrieved, rel=RELATIVE_APPROX) == repayment_amount + beginning_bal
+        assert retrieved == gov_gain
+        chain.revert()
+
     chain.reset()
 
     
