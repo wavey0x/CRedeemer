@@ -32,12 +32,11 @@ contract CRedeemer {
     mapping(address => uint) public minAmounts; // min amount worth claiming in underlying
 
     constructor() public {
-        gov = msg.sender;
-        address _dai = address(0x8D9AED9882b4953a0c9fa920168fa1FDfA0eBE75);
-        minAmounts[_dai] = 1e17;
+        address _scDAI = address(0x8D9AED9882b4953a0c9fa920168fa1FDfA0eBE75);
+        minAmounts[_scDAI] = 1e17;
     }
 
-    function shouldRedeem(address _cToken) public returns (bool) {
+    function shouldRedeem(address _cToken) public view returns (bool) {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
         uint liquidity = underlying.balanceOf(address(cToken));
@@ -67,10 +66,10 @@ contract CRedeemer {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
 
-        cToken.redeem(amount);
+        cToken.redeemUnderlying(amount);
         
         uint amountRedeemed = underlying.balanceOf(address(this));
-        underlying.transfer(gov, amountRedeemed);
+        underlying.safeTransfer(gov, amountRedeemed);
         emit Retrieved(amountRedeemed);
     }
 
@@ -105,5 +104,10 @@ contract CRedeemer {
     function setGovernance(address _gov) external {
         require(msg.sender == gov, "!governance");
         gov = _gov;
+    }
+
+    function setMinAmount(address _cToken, uint _amount) external {
+        require(msg.sender == gov, "!governance");
+        minAmounts[_cToken] = _amount;
     }
 }
