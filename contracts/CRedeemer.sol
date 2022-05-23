@@ -37,17 +37,6 @@ contract CRedeemer {
         minAmounts[_scDAI] = 1e17;
     }
 
-    function shouldRedeem(address _cToken) public view returns (bool) {
-        ICToken cToken = ICToken(_cToken);
-        IERC20 underlying = IERC20(cToken.underlying());
-        uint liquidity = underlying.balanceOf(address(cToken));
-        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(address(cToken)));
-        if(liquidity >= minAmounts[_cToken] && balance >= minAmounts[_cToken]){
-            return true;
-        }
-        return false;
-    }
-
     function redeemMax(address _cToken) external {
         require(shouldRedeem(_cToken));
         ICToken cToken = ICToken(_cToken);
@@ -75,6 +64,17 @@ contract CRedeemer {
         uint amountRedeemed = underlying.balanceOf(address(this));
         underlying.safeTransfer(gov, amountRedeemed);
         emit Retrieved(amountRedeemed);
+    }
+
+    function shouldRedeem(address _cToken) public view returns (bool) {
+        ICToken cToken = ICToken(_cToken);
+        IERC20 underlying = IERC20(cToken.underlying());
+        uint liquidity = underlying.balanceOf(address(cToken));
+        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(address(cToken)));
+        if(liquidity >= minAmounts[_cToken] && balance >= minAmounts[_cToken]){
+            return true;
+        }
+        return false;
     }
 
     function convertFromUnderlying(address _cToken, uint256 amountOfUnderlying) public view returns (uint256 balance){
