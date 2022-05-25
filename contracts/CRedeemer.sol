@@ -43,13 +43,13 @@ contract CRedeemer {
 
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-        uint256 ourBalance = cToken.balanceOfUnderlying(address(this));
+
+        uint256 ourBalance = cToken.balanceOfUnderlying(gov);
         uint256 liquidity = underlying.balanceOf(_cToken);
         uint256 amount = ourBalance <=  liquidity ? type(uint256).max : liquidity;
 
         _redeem(_cToken, amount);
 
-        
     }
 
     function redeemExact(address _cToken, uint amount) external {
@@ -60,30 +60,45 @@ contract CRedeemer {
     function _redeem(address _cToken, uint amount) internal {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
+
+        // transfer all cTokens from gov to contract rather than rely on our math
+        // will help avoid undesired outcomes in case of rounding error
+        cToken.transferFrom(gov, address(this), cToken.balanceOf(gov));
         if(amount == type(uint256).max){
             cToken.redeem(cToken.balanceOf(address(this)));
         }else{
             cToken.redeemUnderlying(amount);
         }
-        
-        
+
         uint amountRedeemed = underlying.balanceOf(address(this));
         if(amountRedeemed > 0){
             underlying.safeTransfer(gov, amountRedeemed);
         }
         
         emit Retrieved(amountRedeemed);
+
+        // return any remainder to gov
+        cToken.transfer(gov, cToken.balanceOf(address(this)));
     }
 
     function shouldRedeem(address _cToken) public view returns (bool) {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
         uint liquidity = underlying.balanceOf(address(cToken));
-        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(address(cToken)));
-        if(liquidity >= minAmounts[_cToken] && balance >= minAmounts[_cToken]){
+        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(gov));
+        if(
+            liquidity >= minAmounts[_cToken] && 
+            balance >= minAmounts[_cToken] &&
+            approvedSpend(_cToken) >= minAmounts[_cToken]
+        ){
             return true;
         }
         return false;
+    }
+
+    function approvedSpend(address _cToken) public view returns (uint) {
+        ICToken cToken = ICToken(_cToken);
+        return cToken.allowance(gov, address(this));
     }
 
     function convertFromUnderlying(address _cToken, uint256 amountOfUnderlying) public view returns (uint256 balance){

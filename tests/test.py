@@ -8,7 +8,8 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
     fromGov = {"from": gov}
     fromWhale = {"from": whale}
     assert scdai.balanceOf(gov) > 0
-    scdai.transfer(redeemer, scdai.balanceOf(gov), fromGov)
+    # scdai.transfer(redeemer, scdai.balanceOf(gov), fromGov)
+    scdai.approve(redeemer, 2**256-1, fromGov)
 
     repayment_amount = 100e18
     chain.snapshot()
@@ -30,6 +31,7 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
         
         assert before > after
         assert after ==0
+        assert scdai.balanceOf(redeemer) == 0
         assert pytest.approx(retrieved, rel=RELATIVE_APPROX) == repayment_amount + beginning_bal
         assert retrieved == gov_gain
         chain.revert()
