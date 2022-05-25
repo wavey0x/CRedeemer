@@ -31,34 +31,30 @@ contract CRedeemer {
     event Retrieved(uint amount);
 
     address public gov = 0xC0E2830724C946a6748dDFE09753613cd38f6767;
-    mapping(address => uint) public minAmounts; // min amount worth claiming in underlying
+    address public scDAI = 0x8D9AED9882b4953a0c9fa920168fa1FDfA0eBE75;
+    uint public minAmount = 1e17; // min amount worth claiming in underlying
 
-    constructor() public {
-        address _scDAI = address(0x8D9AED9882b4953a0c9fa920168fa1FDfA0eBE75);
-        minAmounts[_scDAI] = 1e17;
-    }
+    function redeemMax() external {
+        require(shouldRedeem());
 
-    function redeemMax(address _cToken) external {
-        require(shouldRedeem(_cToken));
-
-        ICToken cToken = ICToken(_cToken);
+        ICToken cToken = ICToken(scDAI);
         IERC20 underlying = IERC20(cToken.underlying());
 
         uint256 ourBalance = cToken.balanceOfUnderlying(gov);
-        uint256 liquidity = underlying.balanceOf(_cToken);
+        uint256 liquidity = underlying.balanceOf(scDAI);
         uint256 amount = ourBalance <=  liquidity ? type(uint256).max : liquidity;
 
-        _redeem(_cToken, amount);
+        _redeem(amount);
 
     }
 
-    function redeemExact(address _cToken, uint amount) external {
-        require(shouldRedeem(_cToken));
-        _redeem(_cToken, amount);
+    function redeemExact(uint amount) external {
+        require(shouldRedeem());
+        _redeem(amount);
     }
 
-    function _redeem(address _cToken, uint amount) internal {
-        ICToken cToken = ICToken(_cToken);
+    function _redeem(uint amount) internal {
+        ICToken cToken = ICToken(scDAI);
         IERC20 underlying = IERC20(cToken.underlying());
 
         // transfer all cTokens from gov to contract rather than rely on our math
@@ -81,28 +77,28 @@ contract CRedeemer {
         cToken.transfer(gov, cToken.balanceOf(address(this)));
     }
 
-    function shouldRedeem(address _cToken) public view returns (bool) {
-        ICToken cToken = ICToken(_cToken);
+    function shouldRedeem() public view returns (bool) {
+        ICToken cToken = ICToken(scDAI);
         IERC20 underlying = IERC20(cToken.underlying());
         uint liquidity = underlying.balanceOf(address(cToken));
-        uint balance = convertToUnderlying(_cToken, cToken.balanceOf(gov));
+        uint balance = convertToUnderlying(cToken.balanceOf(gov));
         if(
-            liquidity >= minAmounts[_cToken] && 
-            balance >= minAmounts[_cToken] &&
-            approvedSpend(_cToken) >= minAmounts[_cToken]
+            liquidity >= minAmount && 
+            balance >= minAmount &&
+            approvedSpend() >= minAmount
         ){
             return true;
         }
         return false;
     }
 
-    function approvedSpend(address _cToken) public view returns (uint) {
-        ICToken cToken = ICToken(_cToken);
+    function approvedSpend() public view returns (uint) {
+        ICToken cToken = ICToken(scDAI);
         return cToken.allowance(gov, address(this));
     }
 
-    function convertFromUnderlying(address _cToken, uint256 amountOfUnderlying) public view returns (uint256 balance){
-        ICToken cToken = ICToken(_cToken);
+    function convertFromUnderlying(uint256 amountOfUnderlying) public view returns (uint256 balance){
+        ICToken cToken = ICToken(scDAI);
         if (amountOfUnderlying == 0) {
             balance = 0;
         } else {
@@ -110,8 +106,8 @@ contract CRedeemer {
         }
     }
 
-    function convertToUnderlying(address _cToken, uint256 cTokenAmount) public view returns (uint256 balance){
-        ICToken cToken = ICToken(_cToken);
+    function convertToUnderlying(uint256 cTokenAmount) public view returns (uint256 balance){
+        ICToken cToken = ICToken(scDAI);
         if (cTokenAmount == 0) {
             balance = 0;
         } else {
@@ -131,11 +127,12 @@ contract CRedeemer {
 
     function setGovernance(address _gov) external {
         require(msg.sender == gov, "!governance");
+        require(_gov != address(0));
         gov = _gov;
     }
 
-    function setMinAmount(address _cToken, uint _amount) external {
+    function setMinAmount(uint _amount) external {
         require(msg.sender == gov, "!governance");
-        minAmounts[_cToken] = _amount;
+        minAmount = _amount;
     }
 }

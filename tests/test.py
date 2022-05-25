@@ -23,7 +23,7 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
 
         before = dai.balanceOf(scdai)
         gov_before = dai.balanceOf(gov)
-        tx = redeemer.redeemMax(scdai, fromWhale)
+        tx = redeemer.redeemMax(fromWhale)
         after = dai.balanceOf(scdai)
         retrieved = tx.events["Retrieved"]["amount"]
         print("Amount redeemed:", retrieved)
@@ -42,7 +42,7 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
     before = dai.balanceOf(scdai)
     
     gov_before = dai.balanceOf(gov)
-    tx = redeemer.redeemMax(scdai, fromWhale)
+    tx = redeemer.redeemMax(fromWhale)
     after = dai.balanceOf(scdai)
     retrieved = tx.events["Retrieved"]["amount"]
     print("Amount redeemed:", retrieved)
@@ -76,7 +76,5 @@ def test_retrieve(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
     assert scdai.balanceOf(gov) - before_sdcai > 0
     
 def test_set_min_amount(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
-    scwftm = "0x5AA53f03197E08C4851CAD8C92c7922DA5857E5d"
-    assert redeemer.minAmounts(scwftm) == 0
-    redeemer.setMinAmount(scwftm, 1e18, {"from":gov})
-    assert redeemer.minAmounts(scwftm) == 1e18
+    redeemer.setMinAmount(1e18, {"from":gov})
+    assert redeemer.minAmount() == 1e18
