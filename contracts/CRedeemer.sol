@@ -18,6 +18,7 @@ interface ICToken {
     function redeem(uint256 redeemTokens) external returns (uint256);
     function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
     function balanceOf(address owner) external view returns (uint256);
+    function balanceOfUnderlying(address owner) external returns (uint256);
     function exchangeRateCurrent() external returns (uint);
 }
 
@@ -39,15 +40,16 @@ contract CRedeemer {
 
     function redeemMax(address _cToken) external {
         require(shouldRedeem(_cToken));
+
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-        uint convertedAmount = 
-            cToken.balanceOf(address(this))
-            .mul(cToken.exchangeRateCurrent())
-            .div(1e18);
-        uint amount = Math.min(convertedAmount, underlying.balanceOf(_cToken));
+        uint256 ourBalance = cToken.balanceOfUnderlying(address(this));
+        uint256 liquidity = underlying.balanceOf(_cToken);
+        uint256 amount = ourBalance <=  liquidity ? type(uint256).max : liquidity;
 
         _redeem(_cToken, amount);
+
+        
     }
 
     function redeemExact(address _cToken, uint amount) external {
@@ -58,11 +60,18 @@ contract CRedeemer {
     function _redeem(address _cToken, uint amount) internal {
         ICToken cToken = ICToken(_cToken);
         IERC20 underlying = IERC20(cToken.underlying());
-
-        cToken.redeemUnderlying(amount);
+        if(amount == type(uint256).max){
+            cToken.redeem(cToken.balanceOf(address(this)));
+        }else{
+            cToken.redeemUnderlying(amount);
+        }
+        
         
         uint amountRedeemed = underlying.balanceOf(address(this));
-        underlying.safeTransfer(gov, amountRedeemed);
+        if(amountRedeemed > 0){
+            underlying.safeTransfer(gov, amountRedeemed);
+        }
+        
         emit Retrieved(amountRedeemed);
     }
 
