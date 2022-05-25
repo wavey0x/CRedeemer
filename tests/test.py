@@ -29,9 +29,26 @@ def test_operation(gov, redeemer, dai, scdai, whale, RELATIVE_APPROX):
         gov_gain = dai.balanceOf(gov) - gov_before
         
         assert before > after
+        assert after ==0
         assert pytest.approx(retrieved, rel=RELATIVE_APPROX) == repayment_amount + beginning_bal
         assert retrieved == gov_gain
         chain.revert()
+    
+    repayment_amount = dai.balanceOf(whale)
+    dai.transfer(scdai, repayment_amount, fromWhale)
+
+    before = dai.balanceOf(scdai)
+    
+    gov_before = dai.balanceOf(gov)
+    tx = redeemer.redeemMax(scdai, fromWhale)
+    after = dai.balanceOf(scdai)
+    retrieved = tx.events["Retrieved"]["amount"]
+    print("Amount redeemed:", retrieved)
+    gov_gain = dai.balanceOf(gov) - gov_before
+    
+    assert before > after
+    assert after !=0
+    assert retrieved == gov_gain
 
     chain.reset()
 
